@@ -1,0 +1,28 @@
+{
+  "name": "mentra-prototype",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "NODE_ENV=production tsx src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "@types/sharp": "^0.31.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@mentra/sdk": "^2.1.29",
+    "@zxing/library": "^0.21.3",
+    "bwip-js": "^4.9.2",
+    "dotenv": "^17.4.1",
+    "sharp": "^0.34.5"
+  }
+}

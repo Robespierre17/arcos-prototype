@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcos AI Sessions</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+    #sidebar {
+      width: 280px;
+      min-width: 280px;
+      background: #1a1d27;
+      border-right: 1px solid #2d3148;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #sidebar-header {
+      padding: 20px 16px 14px;
+      border-bottom: 1px solid #2d3148;
+    }
+
+    #sidebar-header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #a5b4fc;
+    }
+
+    #sidebar-header p {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 3px;
+    }
+
+    #session-list {
+      overflow-y: auto;
+      flex: 1;
+      padding: 8px 0;
+    }
+
+    .session-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background 0.1s, border-color 0.1s;
+    }
+
+    .session-item:hover { background: #22263a; }
+
+    .session-item.active {
+      background: #1e2235;
+      border-left-color: #6366f1;
+    }
+
+    .session-date { font-size: 12px; font-weight: 500; color: #cbd5e1; }
+    .session-time { font-size: 11px; color: #475569; margin-top: 2px; }
+
+    .session-badge {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      background: #14532d;
+      color: #86efac;
+    }
+
+    .session-badge.no-extraction { background: #1e1b2e; color: #6b7280; }
+
+    /* ── Main panel ──────────────────────────────────────────────────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #main-header {
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid #2d3148;
+      background: #13151f;
+      flex-shrink: 0;
+    }
+
+    #main-header h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    #main-header .session-meta { font-size: 12px; color: #475569; margin-top: 3px; }
+
+    /* ── Filmstrip ───────────────────────────────────────────────────────────── */
+    #filmstrip-section {
+      border-bottom: 1px solid #2d3148;
+      background: #0b0d14;
+      flex-shrink: 0;
+    }
+
+    #filmstrip-header-bar {
+      padding: 7px 20px 5px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    #filmstrip-source-label {
+      font-size: 10px;
+      color: #475569;
+    }
+
+    #filmstrip {
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      align-items: flex-start;
+      padding: 0 16px 10px;
+      gap: 7px;
+      /* Custom scrollbar */
+      scrollbar-width: thin;
+      scrollbar-color: #2d3148 transparent;
+    }
+
+    #filmstrip::-webkit-scrollbar { height: 4px; }
+    #filmstrip::-webkit-scrollbar-track { background: transparent; }
+    #filmstrip::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 2px; }
+
+    #filmstrip-empty {
+      font-size: 12px;
+      color: #2d3148;
+      padding: 8px 4px 4px;
+      white-space: nowrap;
+    }
+
+    .frame-thumb {
+      flex-shrink: 0;
+      cursor: pointer;
+      border-radius: 5px;
+      overflow: hidden;
+      border: 2px solid #1e2235;
+      transition: border-color 0.12s, transform 0.12s;
+      background: #13151f;
+    }
+
+    .frame-thumb:hover {
+      border-color: #6366f1;
+      transform: translateY(-2px);
+    }
+
+    .frame-thumb img {
+      display: block;
+      width: 120px;
+      height: 90px;
+      object-fit: cover;
+    }
+
+    .frame-foot {
+      padding: 3px 6px;
+      background: #0f1117;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 20px;
+    }
+
+    .frame-num {
+      font-size: 10px;
+      color: #334155;
+      font-family: monospace;
+    }
+
+    .frame-barcode-badge {
+      font-size: 9px;
+      background: #1e3a5f;
+      color: #60a5fa;
+      padding: 1px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Content panels ──────────────────────────────────────────────────────── */
+    #content {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+    }
+
+    .panel {
+      overflow-y: auto;
+      padding: 20px 24px;
+      border-right: 1px solid #2d3148;
+    }
+
+    .panel:last-child { border-right: none; }
+
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 14px;
+    }
+
+    /* ── Transcript ──────────────────────────────────────────────────────────── */
+    .utterance {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+
+    .utterance-meta {
+      font-size: 10px;
+      color: #475569;
+      margin-bottom: 6px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .utterance-text { font-size: 13px; line-height: 1.6; color: #cbd5e1; }
+
+    /* ── Extraction ──────────────────────────────────────────────────────────── */
+    .ext-section { margin-bottom: 20px; }
+
+    .ext-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+
+    .compound-card {
+      background: #1a1d27;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 11px 14px;
+      margin-bottom: 8px;
+    }
+
+    .compound-name { font-size: 13px; font-weight: 600; color: #a5b4fc; }
+    .compound-detail { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .compound-ndc { font-size: 11px; color: #475569; margin-top: 3px; font-family: monospace; }
+
+    .destination-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #34d399;
+      background: #0d2a1f;
+      border: 1px solid #1a4733;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .safety-note {
+      font-size: 12px;
+      color: #fbbf24;
+      background: #1c1505;
+      border: 1px solid #3b2402;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      line-height: 1.5;
+    }
+
+    /* ── Empty / loading states ──────────────────────────────────────────────── */
+    #empty-state {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #334155;
+      font-size: 14px;
+    }
+
+    .no-data-msg { font-size: 13px; color: #374151; padding: 20px 0; }
+
+    #loading {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    /* ── Lightbox ────────────────────────────────────────────────────────────── */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 200;
+      cursor: zoom-out;
+    }
+
+    #lightbox-inner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 24px;
+    }
+
+    #lightbox-img {
+      max-width: 92vw;
+      max-height: 86vh;
+      border-radius: 6px;
+      box-shadow: 0 0 60px rgba(0,0,0,0.8);
+    }
+
+    #lightbox-caption { font-size: 11px; color: #475569; font-family: monospace; }
+    #lightbox-hint    { font-size: 10px; color: #1e2235; }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────────────── -->
+<nav id="sidebar">
+  <div id="sidebar-header">
+    <h1>Arcos AI Sessions</h1>
+    <p id="session-count">Loading…</p>
+  </div>
+  <div id="session-list"></div>
+</nav>
+
+<!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<main id="main">
+  <div id="empty-state">Select a session to view its details</div>
+  <div id="loading">Loading…</div>
+
+  <div id="session-view" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+
+    <!-- Session header -->
+    <div id="main-header">
+      <h2 id="view-title">Session</h2>
+      <div class="session-meta" id="view-meta"></div>
+    </div>
+
+    <!-- Filmstrip -->
+    <div id="filmstrip-section">
+      <div id="filmstrip-header-bar">
+        <span class="panel-title" style="margin:0">Frames</span>
+        <span id="filmstrip-source-label"></span>
+      </div>
+      <div id="filmstrip">
+        <span id="filmstrip-empty">No frames captured</span>
+      </div>
+    </div>
+
+    <!-- Transcript + Extraction -->
+    <div id="content">
+      <div class="panel" id="transcript-panel">
+        <div class="panel-title">Transcript</div>
+        <div id="transcript-body"></div>
+      </div>
+      <div class="panel" id="extraction-panel">
+        <div class="panel-title">Structured Extraction</div>
+        <div id="extraction-body"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ── Lightbox ───────────────────────────────────────────────────────────── -->
+<div id="lightbox">
+  <div id="lightbox-inner">
+    <img id="lightbox-img" src="" alt="">
+    <div id="lightbox-caption"></div>
+    <div id="lightbox-hint">click anywhere to close</div>
+  </div>
+</div>
+
+<script>
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  const sessionList          = document.getElementById('session-list');
+  const sessionCount         = document.getElementById('session-count');
+  const emptyState           = document.getElementById('empty-state');
+  const loadingEl            = document.getElementById('loading');
+  const sessionView          = document.getElementById('session-view');
+  const viewTitle            = document.getElementById('view-title');
+  const viewMeta             = document.getElementById('view-meta');
+  const transcriptBody       = document.getElementById('transcript-body');
+  const extractionBody       = document.getElementById('extraction-body');
+  const filmstripEl          = document.getElementById('filmstrip');
+  const filmstripSourceLabel = document.getElementById('filmstrip-source-label');
+  const lightbox             = document.getElementById('lightbox');
+  const lightboxImg          = document.getElementById('lightbox-img');
+  const lightboxCaption      = document.getElementById('lightbox-caption');
+
+  // ── Formatting helpers ─────────────────────────────────────────────────────
+  // Session IDs look like "2026-04-16T01-16-35.359Z" (colons replaced with
+  // hyphens). Convert back to real ISO before parsing.
+  function idToDate(id) {
+    return new Date(id.replace(/T(\d{2})-(\d{2})-(\d{2})\./, 'T$1:$2:$3.'));
+  }
+
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function fmtTime(iso) {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function fmtDuration(startIso, endIso) {
+    const secs = Math.round((new Date(endIso) - new Date(startIso)) / 1000);
+    return secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  }
+
+  function escHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── Session list ───────────────────────────────────────────────────────────
+  async function loadSessions() {
+    const sessions = await fetch('/api/sessions').then(r => r.json());
+    sessionCount.textContent = `${sessions.length} session${sessions.length !== 1 ? 's' : ''}`;
+
+    for (const s of sessions) {
+      const el = document.createElement('div');
+      el.className = 'session-item';
+      el.dataset.id = s.id;
+      const d = idToDate(s.id);
+      el.innerHTML = `
+        <div class="session-date">${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+        <div class="session-time">${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+        <span class="session-badge ${s.hasExtraction ? '' : 'no-extraction'}">
+          ${s.hasExtraction ? 'extracted' : 'no extraction'}
+        </span>`;
+      el.addEventListener('click', () => openSession(s.id, el));
+      sessionList.appendChild(el);
+    }
+  }
+
+  // ── Open session ───────────────────────────────────────────────────────────
+  async function openSession(id, el) {
+    document.querySelectorAll('.session-item').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+
+    emptyState.style.display = 'none';
+    sessionView.style.display = 'none';
+    loadingEl.style.display = 'flex';
+
+    // Fetch session data and frames in parallel
+    const [data] = await Promise.all([
+      fetch(`/api/sessions/${encodeURIComponent(id)}`).then(r => r.json()),
+      renderFilmstrip(id),
+    ]);
+
+    loadingEl.style.display = 'none';
+    sessionView.style.display = 'flex';
+
+    const t = data.transcript;
+    viewTitle.textContent = `Session — ${fmtDate(t.endTime)}`;
+    viewMeta.textContent = `${fmtTime(t.startTime)} → ${fmtTime(t.endTime)}  ·  ${fmtDuration(t.startTime, t.endTime)}  ·  ${t.userId}`;
+
+    // Transcript
+    transcriptBody.innerHTML = t.transcript.map(u => `
+      <div class="utterance">
+        <div class="utterance-meta">
+          <span>${new Date(u.timestamp).toLocaleTimeString()}</span>
+          ${u.speakerId ? `<span>Speaker ${escHtml(u.speakerId)}</span>` : ''}
+        </div>
+        <div class="utterance-text">${escHtml(u.text)}</div>
+      </div>`).join('');
+
+    // Extraction
+    if (!data.extraction) {
+      extractionBody.innerHTML = '<p class="no-data-msg">No extraction file found for this session.</p>';
+      return;
+    }
+
+    const e = data.extraction;
+    let html = '';
+
+    html += `<div class="ext-section">
+      <div class="ext-section-label">Compounds</div>
+      ${e.compounds.map(c => `
+        <div class="compound-card">
+          <div class="compound-name">${escHtml(c.name)}</div>
+          <div class="compound-detail">${escHtml(c.quantity)}</div>
+          ${c.ndc ? `<div class="compound-ndc">NDC ${escHtml(c.ndc)}</div>` : ''}
+        </div>`).join('')}
+    </div>`;
+
+    html += `<div class="ext-section">
+      <div class="ext-section-label">Destination</div>
+      <div class="destination-value">${escHtml(e.destination)}</div>
+    </div>`;
+
+    if (e.safetyNotes?.length) {
+      html += `<div class="ext-section">
+        <div class="ext-section-label">Safety Notes</div>
+        ${e.safetyNotes.map(n => `<div class="safety-note">${escHtml(n)}</div>`).join('')}
+      </div>`;
+    }
+
+    html += `<div style="font-size:10px;color:#334155;margin-top:12px;">
+      Extracted ${new Date(e.extractedAt).toLocaleString()}
+    </div>`;
+
+    extractionBody.innerHTML = html;
+  }
+
+  // ── Filmstrip ──────────────────────────────────────────────────────────────
+  async function renderFilmstrip(id) {
+    // Reset while loading
+    filmstripSourceLabel.textContent = '';
+    filmstripEl.innerHTML = '<span id="filmstrip-empty" style="color:#1e2235;font-size:12px">Loading…</span>';
+
+    const data = await fetch(`/api/sessions/${encodeURIComponent(id)}/frames`).then(r => r.json());
+
+    if (!data.source || data.files.length === 0) {
+      filmstripSourceLabel.textContent = 'no frames captured';
+      filmstripEl.innerHTML = '<span style="color:#1e2235;font-size:12px;padding:8px 4px">No frames were captured for this session</span>';
+      return;
+    }
+
+    const count = data.files.length;
+    filmstripSourceLabel.textContent = data.source === 'keyframes'
+      ? `${count} keyframe${count !== 1 ? 's' : ''} (filtered)`
+      : `${count} frame${count !== 1 ? 's' : ''} (all captured)`;
+
+    filmstripEl.innerHTML = data.files.map((f, idx) => {
+      const src = `/sessions/${encodeURIComponent(id)}/frames/${encodeURIComponent(f.filename)}`;
+      return `
+        <div class="frame-thumb" data-src="${escHtml(src)}" data-label="${escHtml(f.filename)}" data-idx="${idx}">
+          <img src="${escHtml(src)}" alt="Frame ${idx + 1}" loading="lazy">
+          <div class="frame-foot">
+            <span class="frame-num">${String(idx + 1).padStart(3, '0')}</span>
+            ${f.hasBarcode ? '<span class="frame-barcode-badge">▦ barcode</span>' : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    filmstripEl.querySelectorAll('.frame-thumb').forEach(el => {
+      el.addEventListener('click', () => openLightbox(el.dataset.src, el.dataset.label));
+    });
+  }
+
+  // ── Lightbox ───────────────────────────────────────────────────────────────
+  function openLightbox(src, label) {
+    lightboxImg.src = src;
+    lightboxCaption.textContent = label;
+    lightbox.style.display = 'block';
+  }
+
+  lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') lightbox.style.display = 'none';
+  });
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  loadSessions();
+</script>
+</body>
+</html>
