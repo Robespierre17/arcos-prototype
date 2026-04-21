@@ -43,7 +43,12 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanation):
   "otherText":      "<any other label text worth recording — strength, volume, manufacturer, storage, warnings — else null>"
 }
 
-If nothing pharmaceutical is visible, return all fields as null.`;
+STRICT RULES — failure to follow these will cause patient safety errors:
+- barcode: Only return a value if you can read the EXACT complete numeric barcode. If you can only partially read it, if it is blurry, curved, or partially obscured, or if you are guessing any digit, return null. Do NOT approximate, infer, or reconstruct barcode numbers.
+- drugName: Only return a value if you can clearly and unambiguously read the drug name printed on a label in the image. Do NOT guess or infer drug names from partial text, context, container shape, or colour. If the text is unclear or you are not certain, return null.
+- lotNumber: Only return a value you can read with full confidence. Return null if uncertain of any character.
+- expirationDate: Only return a value you can read with full confidence. Return null if uncertain of any part.
+- If nothing pharmaceutical is visible, return all fields as null.`;
 
 /**
  * Send a JPEG file to Claude Vision and extract pharmaceutical label data.
@@ -86,8 +91,20 @@ export async function analyzeFrameWithVision(
       return null;
     }
 
-    // Strip markdown code fences if Claude wraps the JSON
-    const raw = content.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    // Extract a JSON object from the response, tolerating extra text or markdown
+    // fences before/after the object.
+    let raw = content.text
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim();
+
+    // If there's still surrounding text, find the first complete JSON object.
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error(`[vision] No JSON object in response: ${raw.slice(0, 200)}`);
+      return null;
+    }
+    raw = jsonMatch[0];
 
     const parsed = JSON.parse(raw) as VisionLabelResult;
     return parsed;

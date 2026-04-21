@@ -72,16 +72,53 @@ class CompoundLoggerApp extends AppServer {
     // dHash of the last frame sent to Vision API — avoids calling Vision on
     // visually-identical frames when ZXing finds nothing.
     let lastVisionHash: bigint | null = null;
+    // Timestamp of the last partial transcription — used to detect active speech.
+    let lastPartialTime = 0;
+    // Queue of TTS messages to play once the user stops speaking.
+    const ttsQueue: string[] = [];
+    let ttsFlushTimer: ReturnType<typeof setTimeout> | undefined;
 
     // ── TTS confirmation ──────────────────────────────────────────────────────
+    // If the user is actively speaking (partial received in the last 3 s), the
+    // message is queued and played once a 3-second silence gap is detected.
+    // This prevents TTS from talking over the user's voice.
     // Fire-and-forget: session logic never waits on audio.
-    // Errors are logged but do not affect recording state.
-    function confirm(text: string): void {
-      console.log(`[${new Date().toISOString()}] TTS: "${text}"`);
+    function playTts(text: string): void {
       (session.audio.speak(text, { stopOtherAudio: false }) as Promise<unknown>)
         .catch((e: Error) =>
           console.error(`[${new Date().toISOString()}] TTS failed: ${e.message}`)
         );
+    }
+
+    function flushTtsQueue(): void {
+      ttsFlushTimer = undefined;
+      if (ttsQueue.length === 0) return;
+      if (Date.now() - lastPartialTime < 3000) {
+        // User still speaking — check again in 500 ms
+        ttsFlushTimer = setTimeout(flushTtsQueue, 500);
+        return;
+      }
+      // Silence gap reached — drain one item, then schedule the next check
+      const text = ttsQueue.shift()!;
+      console.log(`[${new Date().toISOString()}] TTS (dequeued): "${text}"`);
+      playTts(text);
+      if (ttsQueue.length > 0) {
+        ttsFlushTimer = setTimeout(flushTtsQueue, 500);
+      }
+    }
+
+    function confirm(text: string): void {
+      console.log(`[${new Date().toISOString()}] TTS: "${text}"`);
+      if (Date.now() - lastPartialTime < 3000) {
+        // User is actively speaking — queue for after the silence gap
+        console.log(`[${new Date().toISOString()}] TTS queued (user speaking)`);
+        ttsQueue.push(text);
+        if (ttsFlushTimer === undefined) {
+          ttsFlushTimer = setTimeout(flushTtsQueue, 500);
+        }
+        return;
+      }
+      playTts(text);
     }
 
     // ── Photo capture ─────────────────────────────────────────────────────────
@@ -213,7 +250,11 @@ class CompoundLoggerApp extends AppServer {
       const text: string = data.text ?? '';
       console.log(`[${new Date().toISOString()}] [${data.isFinal ? 'final' : 'partial'}] ${text}`);
 
-      if (!data.isFinal) return;
+      if (!data.isFinal) {
+        // Record active-speech timestamp so confirm() can gate TTS playback.
+        lastPartialTime = Date.now();
+        return;
+      }
 
       // ── TTS echo suppression ──────────────────────────────────────────────
       // The glasses mic picks up its own speaker output. Drop short utterances
