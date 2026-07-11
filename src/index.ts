@@ -518,8 +518,11 @@ express.get('/sessions/:id/frames/:filename', (req: Request, res: Response) => {
 });
 // ─────────────────────────────────────────────────────────────────────────────
 
-process.on('uncaughtException', (e) => console.error('CRASH:', e));
-process.on('unhandledRejection', (e) => console.error('REJECT:', e));
+// Exit on uncaught errors — pino-pretty's worker thread otherwise keeps the
+// process alive silently, so startup failures (e.g. EADDRINUSE from a stale
+// server) look like a hang instead of an error.
+process.on('uncaughtException', (e) => { console.error('CRASH:', e); process.exit(1); });
+process.on('unhandledRejection', (e) => { console.error('REJECT:', e); process.exit(1); });
 
 console.log('About to start...');
 app.start()

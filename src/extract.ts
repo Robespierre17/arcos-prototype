@@ -26,7 +26,7 @@ export async function extractFromTranscript(transcriptPath: string): Promise<str
   const fullText = record.transcript.map((e: { text: string }) => e.text).join(' ');
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1024,
     messages: [
       {

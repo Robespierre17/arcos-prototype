@@ -6,7 +6,24 @@
       "Bash(npx tsc *)",
       "Bash(git init *)",
       "Bash(git branch *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(timeout 15 npm start)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(timeout 10 npx tsx -e \"console.log\\('before'\\); import\\('@mentra/sdk'\\).then\\(m => console.log\\('after', Object.keys\\(m\\)\\)\\).catch\\(e => console.error\\('err', e\\)\\)\")",
+      "Bash(timeout 10 node --input-type=module -e \"console.log\\('before'\\); await import\\('@mentra/sdk'\\); console.log\\('after'\\)\")",
+      "Bash(timeout 10 node --input-type=module -e \"console.log\\('before'\\); await import\\('@mentra/sdk'\\); console.log\\('after'\\); process.exit\\(0\\)\")",
+      "Bash(timeout 10 node --input-type=module -e \"console.log\\('before'\\); const pino = \\(await import\\('pino'\\)\\).default; console.log\\('pino loaded'\\); const t = pino.transport\\({target: 'pino-pretty', options: {colorize: true}}\\); console.log\\('transport created'\\); process.exit\\(0\\)\")",
+      "Bash(timeout 10 node --input-type=module -e \"console.log\\('before'\\); const p = await import\\('pino'\\); console.log\\('pino loaded'\\); process.exit\\(0\\)\")",
+      "Bash(timeout 8 node --input-type=module -e ' *)",
+      "Bash(timeout 15 node --input-type=module -e ' *)",
+      "Bash(timeout 15 node -e ' *)",
+      "Bash(timeout 8 node -e ' *)",
+      "Bash(timeout 5 node -e 'console.log\\('\\\\''start'\\\\''\\); require\\('\\\\''/Users/andresenecal/Documents/code/mentra-prototype/node_modules/@logtail/tools/dist/cjs/__TRACKED_VAR__.js'\\\\''\\); console.log\\('\\\\''ok'\\\\''\\); process.exit\\(0\\);')",
+      "Bash(echo \"exit=$?\")",
+      "Bash(timeout 10 node -e ' *)",
+      "Bash(lsof -iTCP:3000 -sTCP:LISTEN)",
+      "Bash(kill 13818)",
+      "Bash(kill 18072)"
     ]
   }
 }
